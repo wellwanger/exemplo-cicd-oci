@@ -1,0 +1,39 @@
+# Staging environment overrides
+
+environment: staging
+namespace: staging
+
+replicaCount: 3
+
+ingress:
+  hosts:
+    - host: staging.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: myapp-staging-tls
+      hosts:
+        - staging.example.com
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+
+config:
+  LOG_LEVEL: "info"
+  API_TIMEOUT: "60"
+  ENABLE_METRICS: "true"
+
+env:
+  DATABASE_URL: "postgresql://staging-db:5432/myapp"
+  REDIS_URL: "redis://staging-redis:6379"

@@ -1,0 +1,45 @@
+# Development environment overrides
+
+environment: dev
+namespace: dev
+
+replicaCount: 2
+
+imagePullSecrets:
+  - name: ocir-secret
+
+# Ingress configuration for external access
+ingress:
+  enabled: true  # Set to false to disable external access via Load Balancer
+  className: "ingress-oci-native"  # OCI Native Ingress Controller (uses OCI Load Balancer)
+  hosts:
+    - host: dev.autopilot-tech.info
+      paths:
+        - path: /
+          pathType: Prefix
+  # TLS desabilitado em dev - habilite em produção com cert-manager
+  tls: []
+  # tls:
+  #   - secretName: myapp-dev-tls
+  #     hosts:
+  #       - dev.autopilot-tech.info
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+
+config:
+  LOG_LEVEL: "debug"
+  API_TIMEOUT: "30"
+  ENABLE_METRICS: "true"
+
+env:
+  DATABASE_URL: "postgresql://dev-db:5432/myapp"
+  REDIS_URL: "redis://dev-redis:6379"

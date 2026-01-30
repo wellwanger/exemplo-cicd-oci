@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "myapp.fullname" . }}-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "myapp.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "myapp.selectorLabels" . | nindent 4 }}
+    {{- if .Values.slot }}
+    slot: {{ .Values.slot }}
+    {{- end }}

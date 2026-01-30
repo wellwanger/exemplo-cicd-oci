@@ -1,0 +1,146 @@
+# Default values for myapp
+# This is a YAML-formatted file.
+
+namespace: default
+environment: dev
+
+replicaCount: 2
+
+image:
+  repository: <region>.ocir.io/<namespace>/myapp
+  pullPolicy: IfNotPresent
+  tag: ""  # Overridden by CI/CD
+
+imagePullSecrets:
+  - name: ocir-secret
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  allowPrivilegeEscalation: false
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+ingress:
+  enabled: true
+  className: "nginx"
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  hosts:
+    - host: app.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: myapp-tls
+      hosts:
+        - app.example.com
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+livenessProbe:
+  path: /health
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  path: /ready
+  initialDelaySeconds: 10
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - myapp
+          topologyKey: kubernetes.io/hostname
+
+# Application environment variables
+env: {}
+
+# ConfigMap data
+config:
+  LOG_LEVEL: "info"
+  NODE_ENV: "production"
+
+# Secrets management
+secrets:
+  enabled: false
+
+# External Secrets integration with OCI Vault
+# Requires External Secrets Operator installed in cluster
+# VaultId and region are configured via --set in CI/CD for security
+externalSecrets:
+  enabled: false
+  vaultId: ""  # Set via --set externalSecrets.vaultId (from GitHub Variables)
+  region: ""   # Set via --set externalSecrets.region (from GitHub Variables)
+  refreshInterval: "1h"
+  useInstancePrincipal: true  # Use OKE node instance principal (recommended)
+  # If not using instance principal, provide:
+  # tenancy: ""
+  # user: ""
+  # fingerprint: ""
+  # privateKeySecret: "oci-credentials"
+  secrets: []
+  # Example:
+  # - key: DATABASE_PASSWORD
+  #   vaultSecretId: ocid1.vaultsecret.oc1.sa-saopaulo-1.xxxxx
+  # - key: API_KEY
+  #   vaultSecretId: ocid1.vaultsecret.oc1.sa-saopaulo-1.yyyyy
+
+volumes: []
+volumeMounts: []
+
+# Blue/Green deployment
+slot: ""
+
+# Canary deployment
+variant: ""
