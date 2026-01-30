@@ -4,11 +4,34 @@
 ![Kubernetes](https://img.shields.io/badge/kubernetes-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
 ![GitHub Actions](https://img.shields.io/badge/GitHub%20Actions-2088FF?style=for-the-badge&logo=github-actions&logoColor=white)
 
-> **Exemplo completo de pipeline CI/CD usando GitHub Actions para deploy automatizado no Oracle Kubernetes Engine (OKE)**
+> **Exemplo de pipeline CI/CD usando GitHub Actions para deploy em ambiente de DESENVOLVIMENTO no Oracle Kubernetes Engine (OKE)**
+
+## ⚠️ Avisos Importantes
+
+**🔴 Este é um projeto de exemplo educacional para ambiente de DESENVOLVIMENTO**
+
+- ✅ **Ideal para**: Aprendizado, POCs, ambientes de desenvolvimento
+- ❌ **NÃO recomendado para**: Ambientes de produção sem adaptações
+- 📚 **Implementações para staging/production**: Devem seguir o modelo de governança e compliance da sua organização
+- 🔒 **Segurança**: Políticas IAM e configurações de rede devem ser revisadas para cada ambiente
 
 ## 📋 Visão Geral
 
-Este repositório demonstra um pipeline completo de CI/CD para deployar aplicações containerizadas no **Oracle Kubernetes Engine (OKE)** usando **GitHub Actions**, seguindo as melhores práticas de DevOps e segurança.
+Este repositório demonstra um **pipeline de CI/CD para ambiente de desenvolvimento** que deploya aplicações containerizadas no **Oracle Kubernetes Engine (OKE)** usando **GitHub Actions**.
+
+### 🎯 Escopo do Exemplo
+
+- **Ambiente**: Apenas desenvolvimento (namespace `dev`)
+- **Estratégia**: Rolling update simples
+- **Foco**: Demonstrar integração GitHub Actions + OCI + OKE
+- **Limitações**: Não inclui estratégias avançadas de deploy (Blue/Green, Canary), aprovações manuais ou testes de carga
+
+**Para ambientes de staging e produção**, você deverá:
+- Adaptar estratégias de deployment conforme governança da organização
+- Implementar aprovações manuais (GitHub Environments)
+- Adicionar testes adicionais (performance, segurança, compliance)
+- Configurar políticas de rollback e disaster recovery
+- Revisar e endurecer configurações de segurança
 
 ### 🎯 Componentes Oracle Cloud Infrastructure (OCI)
 
@@ -171,9 +194,72 @@ helm install external-secrets external-secrets/external-secrets \
   -n external-secrets-system --create-namespace
 ```
 
+### 6️⃣ Configurar Políticas IAM Adicionais
+
+**⚠️ IMPORTANTE**: Políticas IAM adicionais podem ser necessárias dependendo dos recursos utilizados.
+
+#### A) Políticas para OCI Native Ingress Controller
+
+O Ingress Controller precisa criar e gerenciar Load Balancers:
+
+```hcl
+# Dynamic Group para os nodes do OKE
+# Regra: ALL {instance.compartment.id = 'ocid1.compartment.oc1..xxxxx'}
+
+# Políticas necessárias:
+Allow dynamic-group oke-nodes to manage load-balancers in compartment <compartment-name>
+Allow dynamic-group oke-nodes to use virtual-network-family in compartment <compartment-name>
+Allow dynamic-group oke-nodes to manage public-ips in compartment <compartment-name>
+Allow dynamic-group oke-nodes to manage network-security-groups in compartment <compartment-name>
+```
+
+#### B) Políticas para External Secrets Operator (OCI Vault)
+
+Para acessar secrets no OCI Vault usando Instance Principal:
+
+```hcl
+# Dynamic Group para os nodes do cluster OKE
+# Regra: ALL {instance.compartment.id = 'ocid1.compartment.oc1..xxxxx'}
+
+# Políticas necessárias:
+Allow dynamic-group oke-nodes to read secret-family in compartment <compartment-name>
+Allow dynamic-group oke-nodes to read vaults in compartment <compartment-name>
+Allow dynamic-group oke-nodes to read keys in compartment <compartment-name>
+
+# Ou mais específico para um vault:
+Allow dynamic-group oke-nodes to read secret-bundles in compartment <compartment-name> where target.vault.id = 'ocid1.vault.oc1..xxxxx'
+```
+
+#### C) Políticas para CI/CD (GitHub Actions)
+
+O usuário usado no GitHub Actions precisa de permissões para:
+
+```hcl
+# Para gerenciar cluster OKE
+Allow group github-actions-users to use cluster-node-pools in compartment <compartment-name>
+Allow group github-actions-users to use clusters in compartment <compartment-name>
+
+# Para push de imagens no OCIR
+Allow group github-actions-users to manage repos in tenancy
+
+# Para ler configurações (opcional)
+Allow group github-actions-users to read all-resources in compartment <compartment-name>
+```
+
+**📚 Documentação Oficial:**
+- [OKE IAM Policies](https://docs.oracle.com/en-us/iaas/Content/ContEng/Concepts/contengpolicyconfig.htm)
+- [OCI Vault Policies](https://docs.oracle.com/en-us/iaas/Content/KeyManagement/Tasks/managingvaults_topic-To_control_who_can_access_vaults_and_keys.htm)
+- [Dynamic Groups](https://docs.oracle.com/en-us/iaas/Content/Identity/Tasks/managingdynamicgroups.htm)
+
 ## 🔄 Fluxo de Trabalho
 
 ### Deploy para Development
+
+**⚠️ Este workflow é simplificado para ambiente de desenvolvimento. Para staging/production, considere:**
+- Aprovações manuais (GitHub Environments)
+- Estratégias de deploy mais seguras (Blue/Green, Canary)
+- Testes de performance e segurança adicionais
+- Rollback plans e disaster recovery
 
 ```bash
 # 1. Criar feature branch
@@ -183,7 +269,7 @@ git checkout -b feature/nova-funcionalidade
 git add .
 git commit -m "feat: adiciona nova funcionalidade"
 
-# 3. Push para develop
+# 3. Push para develop (ou branch principal)
 git checkout develop
 git merge feature/nova-funcionalidade
 git push origin develop
@@ -298,9 +384,51 @@ kubectl logs -n external-secrets-system -l app.kubernetes.io/name=external-secre
 
 - [OCI Documentation](https://docs.oracle.com/en-us/iaas/Content/home.htm)
 - [OKE Best Practices](https://docs.oracle.com/en-us/iaas/Content/ContEng/Concepts/contengbestpracticesoverview.htm)
+- [OCI IAM Policies](https://docs.oracle.com/en-us/iaas/Content/Identity/Concepts/policies.htm)
 - [GitHub Actions Documentation](https://docs.github.com/actions)
 - [Helm Documentation](https://helm.sh/docs/)
 - [External Secrets Operator](https://external-secrets.io/)
+
+## ⚠️ Considerações para Produção
+
+Se você planeja adaptar este exemplo para ambientes de produção, considere:
+
+### Segurança
+- [ ] Implementar Network Policies mais restritivas
+- [ ] Habilitar Pod Security Standards/Admission
+- [ ] Configurar mTLS entre serviços (Service Mesh)
+- [ ] Implementar runtime security (Falco, OPA)
+- [ ] Habilitar audit logs no OKE
+- [ ] Usar Private Endpoints para API Server
+
+### Observabilidade
+- [ ] Configurar Prometheus/Grafana para métricas
+- [ ] Implementar distributed tracing (Jaeger, Zipkin)
+- [ ] Centralizar logs (ELK, Splunk, OCI Logging)
+- [ ] Configurar alertas (PagerDuty, OpsGenie)
+- [ ] Implementar SLOs e error budgets
+
+### High Availability
+- [ ] Multi-region deployment
+- [ ] Disaster Recovery plan
+- [ ] Backup automatizado de dados
+- [ ] Testes de chaos engineering
+- [ ] Pod Disruption Budgets configurados
+
+### CI/CD Avançado
+- [ ] Aprovações manuais para produção
+- [ ] Estratégias de deploy: Blue/Green, Canary
+- [ ] Feature flags para controle granular
+- [ ] Testes de carga automatizados
+- [ ] Análise de vulnerabilidades no pipeline
+- [ ] Assinatura de imagens (Cosign, Notary)
+
+### Governança
+- [ ] Policies de compliance (OPA/Gatekeeper)
+- [ ] Cost management e resource quotas
+- [ ] RBAC granular por equipe/projeto
+- [ ] GitOps com ArgoCD/FluxCD
+- [ ] Documentação de runbooks
 
 ## 🤝 Contribuindo
 
@@ -312,4 +440,15 @@ MIT License - veja [LICENSE](LICENSE) para detalhes.
 
 ---
 
-**⚠️ Aviso:** Este é um projeto de exemplo para fins educacionais. Adapte as configurações de segurança e recursos conforme necessário para ambientes de produção.
+**⚠️ DISCLAIMER**
+
+Este é um **projeto de exemplo para fins educacionais e ambiente de desenvolvimento**. 
+
+**NÃO use diretamente em produção sem:**
+- Revisão completa de segurança
+- Adequação às políticas de governança da sua organização
+- Implementação de controles de compliance necessários
+- Testes extensivos em ambientes não-produtivos
+- Aprovação das equipes de segurança e infraestrutura
+
+A Oracle, GitHub e os mantenedores deste projeto não se responsabilizam por uso inadequado ou problemas decorrentes da implementação em ambientes produtivos sem as devidas adaptações.
