@@ -12,6 +12,7 @@ env:
   IMAGE_NAME: ${{ vars.IMAGE_NAME }}
   OKE_CLUSTER_ID: ${{ secrets.OKE_CLUSTER_ID }}
   OCI_VAULT_ID: ${{ vars.OCI_VAULT_ID }}  # Optional: for External Secrets integration
+  EXTERNAL_SECRETS_ENABLED: ${{ vars.EXTERNAL_SECRETS_ENABLED }}
   NAMESPACE: dev
 
 permissions:
@@ -173,6 +174,7 @@ jobs:
         run: |
           helm upgrade --install myapp ./helm/myapp \
             --namespace ${{ env.NAMESPACE }} \
+            --set externalSecrets.enabled=${{ env.EXTERNAL_SECRETS_ENABLED }} \
             --set image.repository=${{ env.REGISTRY }}/${{ env.REGISTRY_NAMESPACE }}/${{ env.IMAGE_NAME }} \
             --set image.tag=${{ needs.build-and-push.outputs.image-tag }} \
             --set environment=dev \
@@ -204,7 +206,7 @@ jobs:
           echo "Service name: $SERVICE_NAME"
 
           # Tenta smoke test, mas não falha o deploy se não funcionar
-          kubectl run smoke-test --image=curlimages/curl:latest --rm -i --restart=Never -n ${{ env.NAMESPACE }} --timeout=30s -- \
+          kubectl run smoke-test --image=docker.io/curlimages/curl:latest --rm -i --restart=Never -n ${{ env.NAMESPACE }} --timeout=30s -- \
             curl -f -v http://${SERVICE_NAME}:80/health || echo "Warning: Smoke test failed, check application logs"
 
       - name: Get deployment info

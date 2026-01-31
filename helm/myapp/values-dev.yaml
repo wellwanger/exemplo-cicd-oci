@@ -43,3 +43,13 @@ config:
 env:
   DATABASE_URL: "postgresql://dev-db:5432/myapp"
   REDIS_URL: "redis://dev-redis:6379"
+
+# External Secrets - OCI Vault Integration
+# Controlado via GitHub Variable EXTERNAL_SECRETS_ENABLED (default: false)
+externalSecrets:
+  enabled: false  # Sobrescrito por --set no workflow (via $EXTERNAL_SECRETS_ENABLED)
+  vaultId: ""  # Será passado via --set no workflow (do GitHub Variable OCI_VAULT_ID)
+  region: ""   # Será passado via --set no workflow
+  secrets:
+    - key: DATABASE_PASSWORD
+      name: database-password  # Nome do secret no OCI Vault (não o OCID)

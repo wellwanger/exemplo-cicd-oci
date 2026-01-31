@@ -8,7 +8,7 @@ replicaCount: 2
 
 image:
   repository: <region>.ocir.io/<namespace>/myapp
-  pullPolicy: IfNotPresent
+  pullPolicy: Always  # Always pull para garantir imagem atualizada
   tag: ""  # Overridden by CI/CD
 
 imagePullSecrets:
@@ -132,9 +132,9 @@ externalSecrets:
   secrets: []
   # Example:
   # - key: DATABASE_PASSWORD
-  #   vaultSecretId: ocid1.vaultsecret.oc1.sa-saopaulo-1.xxxxx
+  #   name: database-password  # Nome do secret no OCI Vault (não use OCID)
   # - key: API_KEY
-  #   vaultSecretId: ocid1.vaultsecret.oc1.sa-saopaulo-1.yyyyy
+  #   name: api-key
 
 volumes: []
 volumeMounts: []
